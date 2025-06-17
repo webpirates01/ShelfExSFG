@@ -62,4 +62,3 @@ flashcard-generator/
 ├── .env
 └── .gitignore
 ```
-

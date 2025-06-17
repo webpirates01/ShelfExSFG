@@ -202,7 +202,7 @@ def main():
     with col2:
         flashcard_count = st.slider(
             "Number of Flashcards",
-            5, 20, 13
+            5, 20, 15
         )
     
     with col3:
