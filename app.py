@@ -104,7 +104,32 @@ def main():
         .main {
             max-width: 800px;
             padding: 2rem;
+            background-color: #10E7DC;
+            border-radius: 15px;
         }
+        
+        body {
+            background-color: #f0f2f6;
+        }
+        
+        .stApp {
+            background-color: #f0f2f6;
+        }
+
+        .stTextArea textarea {
+            background-color: white !important;
+            border: 1px solid #ddd !important;
+            border-radius: 8px !important;
+            padding: 10px !important;
+        }
+        
+        .stTextArea label {
+            font-weight: bold !important;
+            color: #333 !important;
+            margin-bottom: 8px !important;
+            display: block !important;
+        }
+
         .stButton>button {
             width: 100%;
             background-color: #4CAF50;
@@ -141,7 +166,7 @@ def main():
     """, unsafe_allow_html=True)
     
     # Header
-    st.markdown("<h1 style='text-align: center;'> LLM Powered Flashcard Generator</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: white; background-color: #4285F4; border-radius: 10px;'> LLM Powered Flashcard Generator</h1>", unsafe_allow_html=True)
     st.markdown("---")
     
     # Input section
@@ -153,7 +178,7 @@ def main():
         content = st.text_area(
             "Paste your book excerpt, chapter, or any educational content here...",
             height=250,
-            label_visibility="collapsed"
+            placeholder="Type or paste your content here..."
         )
     else:
         uploaded_file = st.file_uploader("Upload a file", type=['txt', 'pdf'])
