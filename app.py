@@ -16,10 +16,7 @@ genai.configure(api_key=os.getenv("GEM_API"))
 model = genai.GenerativeModel('gemini-1.5-flash')
 
 def generate_flashcards(content, subject=None, difficulty="Medium", answer_size="Medium", count=10):
-    """
-    Generate flashcards using Gemini API
-    """
-    # Create the prompt
+    """Generate flashcards using Gemini API"""
     prompt = f"""
     Generate {count} question-answer flashcards based on the following content.
     The subject is: {subject if subject else 'general knowledge'}.
@@ -43,27 +40,26 @@ def generate_flashcards(content, subject=None, difficulty="Medium", answer_size=
         return []
 
 def parse_flashcards(text):
-    """
-    Parse the generated text into flashcards
-    """
+    """Parse the generated text into flashcards"""
     flashcards = []
     current_q = None
     
     for line in text.split('\n'):
         line = line.strip()
-        if line.startswith('Q:') or line.startswith('Question:'):
+        if line.startswith(('Q:', 'Question:')):
             if current_q:
                 flashcards.append(current_q)
             current_q = {'question': line[2:].strip(), 'answer': ''}
-        elif line.startswith('A:') or line.startswith('Answer:'):
+        elif line.startswith(('A:', 'Answer:')):
             if current_q:
                 current_q['answer'] = line[2:].strip()
                 flashcards.append(current_q)
                 current_q = None
-        elif current_q and current_q.get('answer', '') == '':
-            current_q['question'] += ' ' + line
-        elif current_q and current_q.get('answer', '') != '':
-            current_q['answer'] += ' ' + line
+        elif current_q:
+            if current_q.get('answer', '') == '':
+                current_q['question'] += ' ' + line
+            else:
+                current_q['answer'] += ' ' + line
     
     if current_q:
         flashcards.append(current_q)
@@ -71,9 +67,7 @@ def parse_flashcards(text):
     return flashcards
 
 def export_flashcards(flashcards, format='json'):
-    """
-    Export flashcards in different formats
-    """
+    """Export flashcards in different formats"""
     if format == 'json':
         return json.dumps(flashcards, indent=2)
     elif format == 'csv':
@@ -84,7 +78,6 @@ def export_flashcards(flashcards, format='json'):
             writer.writerow([card['question'], card['answer']])
         return output.getvalue()
     elif format == 'anki':
-        # Simple TSV format compatible with Anki
         output = StringIO()
         for card in flashcards:
             output.write(f"{card['question']}\t{card['answer']}\n")
@@ -162,26 +155,39 @@ def main():
             text-align: center;
             margin: 1rem 0;
         }
+        /* Prevent layout shifts */
+        .stSelectbox, .stDownloadButton {
+            margin-top: 0.5rem;
+        }
+        /* Hide the selectbox label properly */
+        [data-testid="stSelectbox"] label {
+            display: none;
+        }
     </style>
     """, unsafe_allow_html=True)
     
     # Header
-    st.markdown("<h1 style='text-align: center; color: white; background-color: #4285F4; border-radius: 10px;'> LLM Powered Flashcard Generator</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; color: white; background-color: #45a049; border-radius: 10px;'> LLM Powered Flashcard Generator</h1>", unsafe_allow_html=True)
     st.markdown("---")
+    
+    # Initialize session state for flashcards if not exists
+    if 'flashcards' not in st.session_state:
+        st.session_state.flashcards = []
     
     # Input section
     st.markdown("###  Enter Your Content")
-    input_method = st.radio("", ["Text Input", "File Upload"], horizontal=True)
+    input_method = st.radio("", ["Text Input", "File Upload"], horizontal=True, key="input_method")
     
     content = ""
     if input_method == "Text Input":
         content = st.text_area(
             "Paste your book excerpt, chapter, or any educational content here...",
             height=250,
-            placeholder="Type or paste your content here..."
+            placeholder="Type or paste your content here...",
+            key="text_content"
         )
     else:
-        uploaded_file = st.file_uploader("Upload a file", type=['txt', 'pdf'])
+        uploaded_file = st.file_uploader("Upload a file", type=['txt', 'pdf'], key="file_uploader")
         if uploaded_file:
             if uploaded_file.type == 'text/plain':
                 content = uploaded_file.read().decode('utf-8')
@@ -196,68 +202,80 @@ def main():
         difficulty = st.selectbox(
             "Difficulty Level",
             ["Easy", "Medium", "Hard"],
-            index=1
+            index=1,
+            key="difficulty"
         )
     
     with col2:
         flashcard_count = st.slider(
             "Number of Flashcards",
-            5, 20, 15
+            10, 30, 15,
+            key="flashcard_count"
         )
     
     with col3:
         subject = st.text_input(
             "Related Subject",
-            placeholder="General"
+            placeholder="General",
+            key="subject"
         )
     
     answer_size = st.selectbox(
         "Answer Size",
         ["Short (1 sentence)", "Medium", "Long (detailed)"],
-        index=1
+        index=1,
+        key="answer_size"
     )
     
     # Generate button
-    if st.button("✨ Generate Flashcards", type="primary"):
+    if st.button("✨ Generate Flashcards", type="primary", key="generate_button"):
         if not content.strip():
             st.error("Please provide some content to generate flashcards")
         else:
             with st.spinner("Generating flashcards... This may take a moment"):
-                flashcards = generate_flashcards(
+                st.session_state.flashcards = generate_flashcards(
                     content=content,
                     subject=subject,
                     difficulty=difficulty,
                     answer_size=answer_size,
                     count=flashcard_count
                 )
+    
+    # Display flashcards if they exist
+    if st.session_state.flashcards:
+        st.markdown(f"<div class='success-message'>✅ Successfully generated {len(st.session_state.flashcards)} flashcards!</div>", unsafe_allow_html=True)
+        
+        st.markdown("### 📚 Generated Flashcards")
+        for i, card in enumerate(st.session_state.flashcards, 1):
+            with st.expander(f"Card {i}: {card['question']}", expanded=False):
+                st.markdown(f"<div class='flashcard'><div class='flashcard-question'>Question:</div>{card['question']}<br><br><div class='flashcard-question'>Answer:</div>{card['answer']}</div>", unsafe_allow_html=True)
+        
+        # Export section with persistent format selection
+        st.markdown("### 💾 Export Options")
+        
+        # Use columns to layout the format selector and download button
+        col1, col2 = st.columns([1, 2])
+        
+        with col1:
+            export_format = st.selectbox(
+                "Select format",
+                ["JSON", "CSV", "Anki"],
+                key="export_format",
+                label_visibility="collapsed"
+            )
+        
+        with col2:
+            # Generate the export data
+            export_data = export_flashcards(st.session_state.flashcards, export_format.lower())
             
-            if flashcards:
-                st.markdown(f"<div class='success-message'>✅ Successfully generated {len(flashcards)} flashcards!</div>", unsafe_allow_html=True)
-                
-                # Display flashcards
-                st.markdown("### 📚 Generated Flashcards")
-                for i, card in enumerate(flashcards, 1):
-                    with st.expander(f"Card {i}: {card['question']}", expanded=False):
-                        st.markdown(f"<div class='flashcard'><div class='flashcard-question'>Question:</div>{card['question']}<br><br><div class='flashcard-question'>Answer:</div>{card['answer']}</div>", unsafe_allow_html=True)
-                
-                # Export options
-                st.markdown("### 💾 Export Options")
-                export_format = st.selectbox(
-                    "Select format",
-                    ["JSON", "CSV", "Anki"],
-                    label_visibility="collapsed"
-                )
-                
-                export_data = export_flashcards(flashcards, export_format.lower())
-                
-                st.download_button(
-                    label=f"⬇️ Download as {export_format}",
-                    data=export_data,
-                    file_name=f"flashcards.{export_format.lower()}",
-                    mime="text/plain" if export_format != 'json' else 'application/json'
-                )
-            else:
-                st.error("Failed to generate flashcards. Please try again with different content.")
+            # Create a unique key for the download button based on the format
+            st.download_button(
+                label=f"Download as {export_format}",
+                data=export_data,
+                file_name=f"flashcards.{export_format.lower()}",
+                mime="text/plain" if export_format != 'json' else 'application/json',
+                key=f"download_{export_format.lower()}"
+            )
 
     # Footer
     st.markdown("---")
